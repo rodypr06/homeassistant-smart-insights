@@ -1,11 +1,11 @@
 #!/bin/sh
 
-# Docker entrypoint script for HomeAssistant Smart Insights
-# This script handles runtime environment variable injection
+# Enhanced Docker entrypoint script for HomeAssistant Smart Insights
+# This script handles runtime environment variable injection and building
 
 set -e
 
-echo "🏠 HomeAssistant Smart Insights - Starting..."
+echo "🏠 HomeAssistant Smart Insights - Enhanced Runtime Setup..."
 
 # Function to validate required environment variables
 validate_env() {
@@ -97,15 +97,56 @@ show_config_summary() {
     echo ""
 }
 
+# Function to build application with runtime environment variables
+build_application() {
+    echo "🔨 Building application with runtime environment variables..."
+    
+    cd /usr/src/app
+    
+    # Create .env file with runtime variables
+    cat > .env << EOF
+VITE_OPENAI_API_KEY=$VITE_OPENAI_API_KEY
+VITE_INFLUXDB_URL=$VITE_INFLUXDB_URL
+VITE_INFLUXDB_TOKEN=$VITE_INFLUXDB_TOKEN
+VITE_INFLUXDB_ORG=$VITE_INFLUXDB_ORG
+VITE_INFLUXDB_BUCKET=$VITE_INFLUXDB_BUCKET
+VITE_HOMEASSISTANT_URL=${VITE_HOMEASSISTANT_URL:-NOT_SET}
+VITE_HOMEASSISTANT_TOKEN=${VITE_HOMEASSISTANT_TOKEN:-NOT_SET}
+EOF
+    
+    echo "📦 Running npm build with runtime environment..."
+    npm run build
+    
+    echo "📁 Copying built files to nginx directory..."
+    cp -r dist/* /usr/share/nginx/html/
+    
+    echo "✅ Application built successfully with runtime configuration"
+}
+
+# Function to create health endpoint
+create_health_endpoint() {
+    echo "🏥 Creating health check endpoint..."
+    cat > /usr/share/nginx/html/health << 'EOF'
+{
+  "status": "healthy",
+  "timestamp": "$(date -Iseconds)",
+  "service": "homeassistant-smart-insights",
+  "version": "1.0.0"
+}
+EOF
+}
+
 # Main execution
 echo "🔍 Validating environment configuration..."
 validate_env
 
-# Note: Environment variable injection is commented out because Vite bakes them at build time
-# This would be needed for a true runtime configuration approach
-# inject_env_vars
-
 show_config_summary
+
+echo "🔨 Building application with runtime environment variables..."
+build_application
+
+echo "🏥 Setting up health check..."
+create_health_endpoint
 
 echo "🚀 Starting nginx..."
 
