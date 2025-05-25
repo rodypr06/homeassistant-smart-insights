@@ -113,3 +113,29 @@ $RECYCLE.BIN/
 
 # .nfs files are created when an open file is removed but is still being accessed
 .nfs*
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# SSL certificates (if using local development)
+certs/
+*.pem
+*.crt
+*.key
+
+# Production environment files
+.env.production
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# SSL certificates (if using local development)
+certs/
+*.pem
+*.crt
+*.key
+
+# Production environment files
+.env.production

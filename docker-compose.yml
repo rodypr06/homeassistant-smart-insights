@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  smart-insights:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: homeassistant-smart-insights
+    ports:
+      - "3000:80"
+    environment:
+      # These environment variables will be baked into the build
+      # Copy your values from .env file here or use an .env file
+      - VITE_OPENAI_API_KEY=${VITE_OPENAI_API_KEY}
+      - VITE_INFLUXDB_URL=${VITE_INFLUXDB_URL}
+      - VITE_INFLUXDB_TOKEN=${VITE_INFLUXDB_TOKEN}
+      - VITE_INFLUXDB_ORG=${VITE_INFLUXDB_ORG}
+      - VITE_INFLUXDB_BUCKET=${VITE_INFLUXDB_BUCKET}
+      - VITE_HOMEASSISTANT_URL=${VITE_HOMEASSISTANT_URL}
+      - VITE_HOMEASSISTANT_TOKEN=${VITE_HOMEASSISTANT_TOKEN}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.smart-insights.rule=Host(`smart-insights.local`)"
+      - "traefik.http.services.smart-insights.loadbalancer.server.port=80"
+
+  # Optional: Include InfluxDB if you don't have one running
+  # Uncomment the section below if you need InfluxDB
+  # influxdb:
+  #   image: influxdb:1.8-alpine
+  #   container_name: influxdb
+  #   ports:
+  #     - "8086:8086"
+  #   environment:
+  #     - INFLUXDB_DB=homeassistant
+  #     - INFLUXDB_ADMIN_USER=admin
+  #     - INFLUXDB_ADMIN_PASSWORD=admin123
+  #     - INFLUXDB_HTTP_FLUX_ENABLED=true
+  #   volumes:
+  #     - influxdb_data:/var/lib/influxdb
+  #   restart: unless-stopped
+
+# Uncomment if using the InfluxDB service above
+# volumes:
+#   influxdb_data: 

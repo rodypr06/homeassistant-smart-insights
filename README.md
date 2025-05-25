@@ -35,25 +35,25 @@ A sophisticated web application that transforms your HomeAssistant sensor data i
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ and npm
+- **For Docker deployment:** Docker and Docker Compose
+- **For development:** Node.js 18+ and npm
 - InfluxDB v1.x with Flux queries enabled
 - HomeAssistant (optional - for entity metadata)
 - OpenAI API key
 
-### Installation
+## 🐳 Docker Deployment (Recommended)
+
+> ✅ **Docker support is fully tested and working!** The application builds into a lightweight 49.7MB image with nginx serving the React app.
+
+### Option 1: Docker Compose (Easiest)
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/homeassistant-smart-insights.git
+   git clone https://github.com/rodypr06/homeassistant-smart-insights.git
    cd homeassistant-smart-insights
    ```
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Configure environment variables**
+2. **Configure environment variables**
    ```bash
    cp .env.example .env
    ```
@@ -69,6 +69,78 @@ A sophisticated web application that transforms your HomeAssistant sensor data i
    VITE_HOMEASSISTANT_TOKEN=your_long_lived_access_token
    ```
 
+3. **Deploy with Docker Compose**
+   ```bash
+   # Quick start with interactive script
+   ./docker-start.sh
+   
+   # Or manually:
+   # For development/testing
+   docker-compose up -d
+   
+   # For production with SSL and Traefik
+   docker-compose -f docker-compose.prod.yml up -d
+   ```
+
+4. **Access the application**
+   - Development: `http://localhost:3000`
+   - Production: `http://your-domain.com` (after configuring domain)
+
+### Option 2: Docker Build & Run
+
+```bash
+# Build the image
+docker build -t homeassistant-smart-insights .
+
+# Run the container
+docker run -d \
+  --name smart-insights \
+  -p 3000:80 \
+  --env-file .env \
+  homeassistant-smart-insights
+```
+
+### Option 3: Quick Start Script
+
+```bash
+# Use the interactive setup script
+chmod +x docker-start.sh
+./docker-start.sh
+```
+
+### Option 4: Pre-built Image (Coming Soon)
+
+```bash
+# Pull and run the pre-built image
+docker run -d \
+  --name smart-insights \
+  -p 3000:80 \
+  --env-file .env \
+  ghcr.io/rodypr06/homeassistant-smart-insights:latest
+```
+
+## 💻 Development Setup
+
+### Local Development
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/rodypr06/homeassistant-smart-insights.git
+   cd homeassistant-smart-insights
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment variables**
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit `.env` with your configuration (same as Docker setup above)
+
 4. **Start the development server**
    ```bash
    npm run dev
@@ -76,6 +148,84 @@ A sophisticated web application that transforms your HomeAssistant sensor data i
 
 5. **Open your browser**
    Navigate to `http://localhost:5173`
+
+## 🐳 Docker Configuration Details
+
+### Environment Variables for Docker
+
+When using Docker, all environment variables are baked into the build. Make sure your `.env` file is properly configured before building:
+
+```env
+# Required
+VITE_OPENAI_API_KEY=sk-your-openai-api-key
+VITE_INFLUXDB_URL=http://192.168.1.100:8086
+VITE_INFLUXDB_TOKEN=your-influxdb-token
+VITE_INFLUXDB_ORG=your-org
+VITE_INFLUXDB_BUCKET=home_assistant/autogen
+
+# Optional (for enhanced features)
+VITE_HOMEASSISTANT_URL=http://192.168.1.100:8123
+VITE_HOMEASSISTANT_TOKEN=your-long-lived-access-token
+```
+
+### Docker Compose Services
+
+#### Development (`docker-compose.yml`)
+- **smart-insights**: Main application on port 3000
+- **Optional InfluxDB**: Uncomment to include InfluxDB service
+
+#### Production (`docker-compose.prod.yml`)
+- **smart-insights**: Main application with production optimizations
+- **traefik**: Reverse proxy with automatic SSL certificates
+- **influxdb**: Full InfluxDB service with persistence
+
+### Production Deployment
+
+For production deployment, update the following in `docker-compose.prod.yml`:
+
+1. **Domain Configuration**:
+   ```yaml
+   - "traefik.http.routers.smart-insights.rule=Host(`your-domain.com`)"
+   ```
+
+2. **Email for SSL Certificates**:
+   ```yaml
+   - "--certificatesresolvers.letsencrypt.acme.email=your-email@example.com"
+   ```
+
+3. **InfluxDB Credentials**:
+   ```env
+   INFLUXDB_ADMIN_PASSWORD=your-secure-password
+   ```
+
+### Docker Commands
+
+```bash
+# View logs
+docker-compose logs -f smart-insights
+
+# Rebuild after changes
+docker-compose build --no-cache
+
+# Stop services
+docker-compose down
+
+# Remove everything including volumes
+docker-compose down -v
+
+# Production deployment
+docker-compose -f docker-compose.prod.yml up -d
+
+# Scale for high availability (production)
+docker-compose -f docker-compose.prod.yml up -d --scale smart-insights=3
+```
+
+### Docker Architecture
+- **Multi-stage build**: Optimized production builds with Node.js build stage and Nginx serving stage
+- **Nginx**: High-performance static file serving with gzip compression
+- **Health checks**: Container health monitoring with `/health` endpoint
+- **Security headers**: Production-ready security configuration
+- **SSL/TLS**: Automatic certificate management with Traefik (production)
 
 ## 🔧 Configuration
 
