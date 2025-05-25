@@ -3,13 +3,10 @@ import { useState } from 'react';
 import QueryInterface from './components/Dashboard/QueryInterface';
 import VisualizationWidget from './components/Dashboard/VisualizationWidget';
 import InsightsWidget from './components/Dashboard/InsightsWidget';
-import ThemeToggle from './components/Common/ThemeToggle';
-import { useTheme } from './hooks/useTheme';
 
 const queryClient = new QueryClient();
 
 function App() {
-  const { theme } = useTheme();
   const [queryResults, setQueryResults] = useState<any>(null);
   const [currentQuery, setCurrentQuery] = useState<string>('');
 
@@ -22,7 +19,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className={`min-h-screen ${theme}`}>
+      <div className="min-h-screen dark">
         <header className="header-gradient">
           <div className="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -33,7 +30,6 @@ function App() {
                 HomeAssistant Smart Insights
               </h1>
             </div>
-            <ThemeToggle />
           </div>
         </header>
 
