@@ -4,17 +4,17 @@
 
 @layer base {
   body {
-    @apply bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 text-text-primary dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900 dark:text-dark-text-primary;
+    @apply bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 text-dark-text-primary;
     min-height: 100vh;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-gradient-to-br from-white/80 to-white/60 dark:from-slate-800/80 dark:to-slate-900/60 
-           backdrop-blur-sm border border-white/20 dark:border-slate-700/50 
-           rounded-xl shadow-xl shadow-blue-500/10 dark:shadow-indigo-500/20 p-6
-           hover:shadow-2xl hover:shadow-blue-500/20 dark:hover:shadow-indigo-500/30 
+    @apply bg-gradient-to-br from-slate-800/80 to-slate-900/60 
+           backdrop-blur-sm border border-slate-700/50 
+           rounded-xl shadow-xl shadow-indigo-500/20 p-6
+           hover:shadow-2xl hover:shadow-indigo-500/30 
            transition-all duration-300;
   }
   
@@ -27,23 +27,23 @@
   }
   
   .btn-secondary {
-    @apply bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 
-           hover:from-slate-200 hover:to-slate-300 dark:hover:from-slate-600 dark:hover:to-slate-500
-           text-slate-700 dark:text-slate-200 font-semibold py-2.5 px-5 rounded-lg 
+    @apply bg-gradient-to-r from-slate-700 to-slate-600 
+           hover:from-slate-600 hover:to-slate-500
+           text-slate-200 font-semibold py-2.5 px-5 rounded-lg 
            shadow-md shadow-slate-500/20 hover:shadow-lg hover:shadow-slate-500/30
            transform hover:scale-105 transition-all duration-200
-           border border-slate-300/50 dark:border-slate-600/50;
+           border border-slate-600/50;
   }
 
   .input-field {
     @apply w-full px-4 py-3 rounded-lg 
-           bg-gradient-to-r from-white/90 to-white/70 dark:from-slate-800/90 dark:to-slate-700/70
-           border border-slate-200/60 dark:border-slate-600/60 
-           text-text-primary dark:text-dark-text-primary
+           bg-gradient-to-r from-slate-800/90 to-slate-700/70
+           border border-slate-600/60 
+           text-dark-text-primary
            focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50
            shadow-sm shadow-slate-500/10 focus:shadow-md focus:shadow-blue-500/20
            backdrop-blur-sm transition-all duration-200
-           placeholder:text-slate-400 dark:placeholder:text-slate-500;
+           placeholder:text-slate-500;
   }
 
   .header-gradient {
@@ -53,16 +53,16 @@
 
   .status-indicator {
     @apply px-3 py-1.5 rounded-full text-xs font-medium
-           bg-gradient-to-r from-emerald-100 to-teal-100 dark:from-emerald-900/50 dark:to-teal-900/50
-           text-emerald-700 dark:text-emerald-300
-           border border-emerald-200/50 dark:border-emerald-700/50
+           bg-gradient-to-r from-emerald-900/50 to-teal-900/50
+           text-emerald-300
+           border border-emerald-700/50
            shadow-sm shadow-emerald-500/10;
   }
 
   .query-results-card {
-    @apply bg-gradient-to-br from-slate-50/90 to-blue-50/90 dark:from-slate-800/90 dark:to-slate-900/90
-           backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50
-           rounded-xl p-4 shadow-lg shadow-slate-500/10 dark:shadow-indigo-500/20;
+    @apply bg-gradient-to-br from-slate-800/90 to-slate-900/90
+           backdrop-blur-sm border border-slate-700/50
+           rounded-xl p-4 shadow-lg shadow-indigo-500/20;
   }
 
   .chat-message-user {
@@ -71,14 +71,14 @@
   }
 
   .chat-message-assistant {
-    @apply bg-gradient-to-br from-white/90 to-slate-50/90 dark:from-slate-700/90 dark:to-slate-800/90
-           backdrop-blur-sm border border-slate-200/50 dark:border-slate-600/50
-           shadow-md shadow-slate-500/10 dark:shadow-indigo-500/20;
+    @apply bg-gradient-to-br from-slate-700/90 to-slate-800/90
+           backdrop-blur-sm border border-slate-600/50
+           shadow-md shadow-indigo-500/20;
   }
 
   .chart-container {
-    @apply bg-gradient-to-br from-white/95 to-slate-50/95 dark:from-slate-800/95 dark:to-slate-900/95
-           backdrop-blur-sm rounded-lg border border-slate-200/50 dark:border-slate-700/50
+    @apply bg-gradient-to-br from-slate-800/95 to-slate-900/95
+           backdrop-blur-sm rounded-lg border border-slate-700/50
            shadow-inner shadow-slate-500/5;
   }
 
@@ -87,7 +87,7 @@
   }
 
   .markdown-content h2 {
-    @apply text-lg font-semibold mb-2 bg-gradient-to-r from-slate-700 to-slate-600 dark:from-slate-200 dark:to-slate-300 bg-clip-text text-transparent;
+    @apply text-lg font-semibold mb-2 bg-gradient-to-r from-slate-200 to-slate-300 bg-clip-text text-transparent;
   }
 
   .markdown-content h3 {
@@ -95,7 +95,7 @@
   }
 
   .markdown-content p {
-    @apply mb-3 text-slate-600 dark:text-slate-300 leading-relaxed;
+    @apply mb-3 text-slate-300 leading-relaxed;
   }
 
   .markdown-content ul {
@@ -107,16 +107,16 @@
   }
 
   .markdown-content li {
-    @apply text-slate-600 dark:text-slate-300;
+    @apply text-slate-300;
   }
 
   .markdown-content strong {
-    @apply font-semibold bg-gradient-to-r from-slate-700 to-slate-600 dark:from-slate-200 dark:to-slate-300 bg-clip-text text-transparent;
+    @apply font-semibold bg-gradient-to-r from-slate-200 to-slate-300 bg-clip-text text-transparent;
   }
 
   .markdown-content code {
-    @apply bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 
-           px-2 py-1 rounded text-sm border border-slate-200/50 dark:border-slate-600/50;
+    @apply bg-gradient-to-r from-slate-700 to-slate-600 
+           px-2 py-1 rounded text-sm border border-slate-600/50;
   }
 
   .loading-spinner {
@@ -125,14 +125,14 @@
   }
 
   .error-message {
-    @apply bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20
-           border border-red-200/50 dark:border-red-700/50 text-red-700 dark:text-red-300
+    @apply bg-gradient-to-r from-red-900/20 to-rose-900/20
+           border border-red-700/50 text-red-300
            rounded-lg p-3 shadow-sm shadow-red-500/10;
   }
 
   .success-message {
-    @apply bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20
-           border border-emerald-200/50 dark:border-emerald-700/50 text-emerald-700 dark:text-emerald-300
+    @apply bg-gradient-to-r from-emerald-900/20 to-teal-900/20
+           border border-emerald-700/50 text-emerald-300
            rounded-lg p-3 shadow-sm shadow-emerald-500/10;
   }
 }
