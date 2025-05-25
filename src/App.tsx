@@ -1,14 +1,28 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import QueryInterface from './components/Dashboard/QueryInterface';
 import VisualizationWidget from './components/Dashboard/VisualizationWidget';
 import InsightsWidget from './components/Dashboard/InsightsWidget';
+import { validateEnvironmentVariables, logEnvironmentStatus, getRequiredEnvHelp } from './utils/env-validation';
 
 const queryClient = new QueryClient();
 
 function App() {
   const [queryResults, setQueryResults] = useState<any>(null);
   const [currentQuery, setCurrentQuery] = useState<string>('');
+  const [envError, setEnvError] = useState<string | null>(null);
+
+  // Validate environment variables on startup
+  useEffect(() => {
+    const validation = validateEnvironmentVariables();
+    logEnvironmentStatus();
+    
+    if (!validation.isValid) {
+      const errorMessage = `Configuration Error:\n\n${validation.errors.join('\n')}\n\n${getRequiredEnvHelp()}`;
+      setEnvError(errorMessage);
+      console.error('❌ Environment validation failed:', validation.errors);
+    }
+  }, []);
 
   const handleQueryResults = (results: any, query: string) => {
     console.log('App received query results:', results);
@@ -16,6 +30,40 @@ function App() {
     setQueryResults(results);
     setCurrentQuery(query);
   };
+
+  // Show environment error if configuration is invalid
+  if (envError) {
+    return (
+      <div className="min-h-screen dark bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full">
+          <div className="card">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">⚠️</span>
+              </div>
+              <h1 className="text-2xl font-bold text-red-400 mb-2">Configuration Required</h1>
+              <p className="text-slate-300">Please configure your environment variables to continue.</p>
+            </div>
+            
+            <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+              <pre className="text-sm text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                {envError}
+              </pre>
+            </div>
+            
+            <div className="mt-6 text-center">
+              <button 
+                onClick={() => window.location.reload()} 
+                className="btn-primary"
+              >
+                Retry Configuration
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

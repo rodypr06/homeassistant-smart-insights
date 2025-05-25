@@ -8,6 +8,9 @@ export function useHomeAssistant() {
   const getStates = useCallback(async () => {
     try {
       setError(null);
+      if (!homeAssistantService) {
+        throw new Error('HomeAssistant service is not configured. Please check your environment variables.');
+      }
       return await homeAssistantService.getStates();
     } catch (err) {
       setError(err as Error);
@@ -18,6 +21,9 @@ export function useHomeAssistant() {
   const getEntityHistory = useCallback(async (entityId: string, startTime: string, endTime: string) => {
     try {
       setError(null);
+      if (!homeAssistantService) {
+        throw new Error('HomeAssistant service is not configured. Please check your environment variables.');
+      }
       return await homeAssistantService.getEntityHistory(entityId, startTime, endTime);
     } catch (err) {
       setError(err as Error);
@@ -28,6 +34,9 @@ export function useHomeAssistant() {
   const getEntities = useCallback(async () => {
     try {
       setError(null);
+      if (!homeAssistantService) {
+        throw new Error('HomeAssistant service is not configured. Please check your environment variables.');
+      }
       return await homeAssistantService.getEntities();
     } catch (err) {
       setError(err as Error);

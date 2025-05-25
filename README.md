@@ -287,10 +287,21 @@ The application features a sophisticated design system with:
 
 ## 🔒 Security & Privacy
 
-- **Environment Variables**: Sensitive data stored securely in `.env`
-- **Client-side Processing**: No data sent to external servers except OpenAI
-- **Optional HomeAssistant**: Works without HA connection for enhanced privacy
-- **Local InfluxDB**: Your data stays in your infrastructure
+> ⚠️ **CRITICAL SECURITY WARNING**: This is a client-side application that exposes API keys in the browser. See [SECURITY.md](SECURITY.md) for detailed security considerations.
+
+### Current Security Status
+- **⚠️ API Key Exposure**: OpenAI API keys are visible in browser (development/personal use only)
+- **✅ Environment Validation**: Validates API key formats and required variables
+- **✅ Input Sanitization**: Validates and sanitizes user inputs
+- **✅ Error Handling**: Prevents sensitive data leakage in error messages
+- **✅ Local Data**: Your InfluxDB data stays in your infrastructure
+
+### For Production Use
+- **Implement a backend proxy service** to handle API calls securely
+- **Use server-side environment variables** that are not exposed to clients
+- **Implement proper authentication** and authorization
+- **Use HTTPS** for all communications
+- **See [SECURITY.md](SECURITY.md)** for comprehensive security guidelines
 
 ## 🤝 Contributing
 

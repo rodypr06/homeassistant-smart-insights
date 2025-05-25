@@ -24,6 +24,10 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Copy custom entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Expose port 80
 EXPOSE 80
 
@@ -31,5 +35,6 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost/ || exit 1
 
-# Start nginx
+# Use custom entrypoint
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"] 

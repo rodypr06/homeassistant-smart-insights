@@ -59,10 +59,31 @@ class HomeAssistantService {
   }
 }
 
-const homeAssistantConfig = {
-  url: import.meta.env.VITE_HOMEASSISTANT_URL || 'http://192.168.50.150',
-  token: import.meta.env.VITE_HOMEASSISTANT_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiIzZTlhNWM5OTQxOGU0Y2I0YmMxMzVkMTFhOGFjNWUzNSIsImlhdCI6MTc0ODE4NzU3MCwiZXhwIjoyMDYzNTQ3NTcwfQ.S80v6LmZOMaCvDtehYReduiuxBoj6_axSXm7FdBHVP8',
+// Validate environment variables
+const validateConfig = () => {
+  const url = import.meta.env.VITE_HOMEASSISTANT_URL;
+  const token = import.meta.env.VITE_HOMEASSISTANT_TOKEN;
+  
+  if (!url || url === 'NOT SET' || url === 'your_homeassistant_url_here') {
+    console.warn('⚠️ HomeAssistant URL not configured. HomeAssistant integration will be disabled.');
+    return null;
+  }
+  
+  if (!token || token === 'NOT SET' || token === 'your_homeassistant_token_here') {
+    console.warn('⚠️ HomeAssistant token not configured. HomeAssistant integration will be disabled.');
+    return null;
+  }
+  
+  // Validate token format (should be a JWT or long-lived access token)
+  if (token.length < 50) {
+    console.warn('⚠️ HomeAssistant token appears to be invalid (too short). Please check your configuration.');
+    return null;
+  }
+  
+  return { url, token };
 };
 
-export const homeAssistantService = new HomeAssistantService(homeAssistantConfig);
+const homeAssistantConfig = validateConfig();
+
+export const homeAssistantService = homeAssistantConfig ? new HomeAssistantService(homeAssistantConfig) : null;
 export default HomeAssistantService; 

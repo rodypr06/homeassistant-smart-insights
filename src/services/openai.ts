@@ -1,25 +1,88 @@
-import OpenAI from 'openai';
 import type { QueryRequest, ProcessedQuery } from '../types/dashboard';
 
+// Security Warning: This is a client-side implementation that should be replaced
+// with a backend proxy service in production to avoid exposing API keys
 class OpenAIService {
-  private client: OpenAI;
+  private apiKey: string;
+  private baseUrl: string;
 
   constructor(apiKey: string) {
-    // Debug logging
-    console.log('OpenAI API Key provided:', apiKey ? `${apiKey.substring(0, 10)}...` : 'NO KEY PROVIDED');
-    
-    if (!apiKey) {
-      throw new Error('OpenAI API key is required but not provided');
+    if (!apiKey || apiKey === 'your_openai_api_key_here' || apiKey === 'NOT SET') {
+      throw new Error('OpenAI API key is required. Please set VITE_OPENAI_API_KEY in your .env file.');
     }
     
-    this.client = new OpenAI({
-      apiKey,
-      dangerouslyAllowBrowser: true,
-    });
+    // Validate API key format
+    if (!apiKey.startsWith('sk-')) {
+      throw new Error('Invalid OpenAI API key format. API keys should start with "sk-"');
+    }
+    
+    this.apiKey = apiKey;
+    this.baseUrl = 'https://api.openai.com/v1';
+    
+    console.warn('⚠️ SECURITY WARNING: OpenAI API key is exposed in browser. Use a backend proxy in production!');
+  }
+
+  private async makeRequest(endpoint: string, data: any, retries = 3): Promise<any> {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(`${this.baseUrl}${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`,
+          },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          
+          if (response.status === 401) {
+            throw new Error('Invalid OpenAI API key. Please check your VITE_OPENAI_API_KEY.');
+          } else if (response.status === 429) {
+            if (attempt < retries) {
+              const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+              console.log(`Rate limited. Retrying in ${delay}ms... (attempt ${attempt}/${retries})`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
+            }
+            throw new Error('OpenAI rate limit exceeded. Please try again later.');
+          } else if (response.status === 403) {
+            throw new Error('OpenAI quota exceeded. Please check your API usage.');
+          }
+          
+          throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+        }
+
+        return await response.json();
+      } catch (error) {
+        if (attempt === retries) {
+          throw error;
+        }
+        
+        // Only retry on network errors, not API errors
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          const delay = Math.pow(2, attempt) * 1000;
+          console.log(`Network error. Retrying in ${delay}ms... (attempt ${attempt}/${retries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          throw error;
+        }
+      }
+    }
   }
 
   async processQuery(request: QueryRequest): Promise<ProcessedQuery> {
     try {
+      // Validate input
+      if (!request.userInput || request.userInput.trim().length === 0) {
+        throw new Error('Query input is required');
+      }
+
+      if (request.userInput.length > 1000) {
+        throw new Error('Query is too long. Please keep it under 1000 characters.');
+      }
+
       const prompt = `
         Convert this natural language query about HomeAssistant data into a Flux query for InfluxDB v1.x:
         "${request.userInput}"
@@ -58,7 +121,7 @@ class OpenAIService {
         }
       `;
 
-      const response = await this.client.chat.completions.create({
+      const response = await this.makeRequest('/chat/completions', {
         model: 'gpt-4',
         messages: [
           {
@@ -71,10 +134,27 @@ class OpenAIService {
           },
         ],
         temperature: 0.3,
+        max_tokens: 1000,
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{}');
-      return result as ProcessedQuery;
+      const content = response.choices?.[0]?.message?.content;
+      if (!content) {
+        throw new Error('No response content from OpenAI');
+      }
+
+      try {
+        const result = JSON.parse(content);
+        
+        // Validate the response structure
+        if (!result.fluxQuery || typeof result.fluxQuery !== 'string') {
+          throw new Error('Invalid response: missing or invalid fluxQuery');
+        }
+        
+        return result as ProcessedQuery;
+      } catch (parseError) {
+        console.error('Failed to parse OpenAI response:', content);
+        throw new Error('Invalid JSON response from OpenAI');
+      }
     } catch (error) {
       console.error('Error processing query with OpenAI:', error);
       throw error;
@@ -83,20 +163,24 @@ class OpenAIService {
 
   async generateInsights(data: any[], query: string): Promise<string> {
     try {
-      console.log('Generating insights for', data.length, 'records');
-      console.log('Query:', query);
+      console.log('Generating insights for', data?.length || 0, 'records');
       
-      if (!data || data.length === 0) {
-        throw new Error('No data provided for analysis');
+      // Validate inputs
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        throw new Error('No data provided for analysis. Please run a query first.');
       }
       
-      // Summarize the data instead of sending all raw data
+      if (!query || query.trim().length === 0) {
+        throw new Error('Query is required for context');
+      }
+      
+      // Summarize the data safely
       let dataSummary;
       try {
         dataSummary = this.summarizeData(data);
       } catch (error) {
         console.error('Error summarizing data:', error);
-        throw new Error('Failed to process data for analysis');
+        throw new Error('Failed to process data for analysis. Please check your data format.');
       }
       
       console.log('Data summary created:', dataSummary);
@@ -136,7 +220,7 @@ class OpenAIService {
 
       console.log('Sending request to OpenAI...');
       
-      const response = await this.client.chat.completions.create({
+      const response = await this.makeRequest('/chat/completions', {
         model: 'gpt-4',
         messages: [
           {
@@ -152,7 +236,11 @@ class OpenAIService {
         max_tokens: 1000,
       });
 
-      const result = response.choices[0].message.content || 'No insights available.';
+      const result = response.choices?.[0]?.message?.content;
+      if (!result) {
+        throw new Error('No insights generated by OpenAI');
+      }
+      
       console.log('OpenAI response received successfully');
       return result;
       
@@ -161,16 +249,16 @@ class OpenAIService {
       
       // Provide more specific error messages
       if (error instanceof Error) {
-        if (error.message.includes('rate_limit')) {
+        if (error.message.includes('rate_limit') || error.message.includes('rate limit')) {
           throw new Error('OpenAI rate limit exceeded. Please try again in a moment.');
-        } else if (error.message.includes('insufficient_quota')) {
+        } else if (error.message.includes('quota')) {
           throw new Error('OpenAI quota exceeded. Please check your API usage.');
-        } else if (error.message.includes('invalid_api_key')) {
+        } else if (error.message.includes('API key') || error.message.includes('401')) {
           throw new Error('Invalid OpenAI API key. Please check your configuration.');
         } else if (error.message.includes('No data provided')) {
-          throw new Error('No data available for analysis. Please run a query first.');
+          throw error; // Re-throw as is
         } else if (error.message.includes('Failed to process data')) {
-          throw new Error('Data processing error. Please try with a different query.');
+          throw error; // Re-throw as is
         }
       }
       
@@ -187,10 +275,20 @@ class OpenAIService {
     try {
       console.log('Updating insights based on user request:', userRequest);
       
-      // Summarize the data
+      // Validate inputs
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        throw new Error('No data available for analysis');
+      }
+      
+      if (!userRequest || userRequest.trim().length === 0) {
+        throw new Error('User request is required');
+      }
+      
+      // Summarize the data safely
       const dataSummary = this.summarizeData(data);
       
-      // Build conversation context
+      // Build conversation context (limit to last 10 messages to avoid token limits)
+      const recentHistory = conversationHistory.slice(-10);
       const messages: Array<{role: 'system' | 'user' | 'assistant', content: string}> = [
         {
           role: 'system',
@@ -199,9 +297,9 @@ class OpenAIService {
           Original Query: "${originalQuery}"
           Data Summary: ${JSON.stringify(dataSummary, null, 2)}
           
-          The user can ask you to modify the report, add more details, focus on specific aspects, change the format, or ask follow-up questions. Always maintain context from the previous conversation and provide updated, comprehensive responses.`
+          The user wants to modify or enhance the analysis. Provide updated insights in markdown format.`,
         },
-        ...conversationHistory.map(msg => ({
+        ...recentHistory.map(msg => ({
           role: msg.role as 'user' | 'assistant',
           content: msg.content
         })),
@@ -211,31 +309,28 @@ class OpenAIService {
         }
       ];
 
-      const response = await this.client.chat.completions.create({
+      const response = await this.makeRequest('/chat/completions', {
         model: 'gpt-4',
         messages,
         temperature: 0.7,
-        max_tokens: 1200,
+        max_tokens: 1000,
       });
 
-      const result = response.choices[0].message.content || 'No response available.';
-      console.log('Updated insights generated successfully');
+      const result = response.choices?.[0]?.message?.content;
+      if (!result) {
+        throw new Error('No response generated by OpenAI');
+      }
+
       return result;
-      
+
     } catch (error) {
-      console.error('Error updating insights with OpenAI:', error);
+      console.error('Error in chat:', error);
       
       if (error instanceof Error) {
-        if (error.message.includes('rate_limit')) {
-          throw new Error('OpenAI rate limit exceeded. Please try again in a moment.');
-        } else if (error.message.includes('insufficient_quota')) {
-          throw new Error('OpenAI quota exceeded. Please check your API usage.');
-        } else if (error.message.includes('invalid_api_key')) {
-          throw new Error('Invalid OpenAI API key. Please check your configuration.');
-        }
+        throw error;
       }
       
-      throw new Error('Failed to update insights. Please try again.');
+      throw new Error('Failed to process chat message. Please try again.');
     }
   }
 
@@ -245,104 +340,75 @@ class OpenAIService {
     statistics: Record<string, any>;
     sampleData: any[];
   } {
-    console.log('Starting data summarization...');
-    console.log('Input data:', data);
-    
-    if (!data || data.length === 0) {
-      console.log('No data provided, returning empty summary');
-      return {
-        timeRange: 'No data',
-        entities: [],
-        statistics: {},
-        sampleData: []
-      };
-    }
-
     try {
-      // Extract unique entities with safety checks
-      const entities = [...new Set(data.map(d => d?.entity_id).filter(Boolean))];
-      console.log('Extracted entities:', entities);
+      // Validate input
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        throw new Error('No data to summarize');
+      }
+
+      // Filter out invalid data points
+      const validData = data.filter(item => 
+        item && 
+        typeof item === 'object' && 
+        item.timestamp && 
+        item.entity_id && 
+        (item.value !== null && item.value !== undefined && !isNaN(Number(item.value)))
+      );
+
+      if (validData.length === 0) {
+        throw new Error('No valid data points found');
+      }
+
+      // Sort by timestamp to ensure proper time range calculation
+      const sortedData = validData.sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+
+      // Calculate time range safely
+      const startTime = new Date(sortedData[0].timestamp);
+      const endTime = new Date(sortedData[sortedData.length - 1].timestamp);
       
-      // Calculate time range with safety checks
-      const validTimestamps = data
-        .map(d => d?.timestamp)
-        .filter(Boolean)
-        .map(t => new Date(t))
-        .filter(date => !isNaN(date.getTime()))
-        .sort();
-      
-      const timeRange = validTimestamps.length > 0 
-        ? `${validTimestamps[0].toLocaleString()} to ${validTimestamps[validTimestamps.length - 1].toLocaleString()}`
-        : 'Unknown time range';
-      
-      console.log('Calculated time range:', timeRange);
-      
-      // Calculate statistics for each entity with safety checks
+      if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+        throw new Error('Invalid timestamp format in data');
+      }
+
+      const timeRange = `${startTime.toISOString()} to ${endTime.toISOString()}`;
+
+      // Get unique entities
+      const entities = [...new Set(sortedData.map(item => item.entity_id))].filter(Boolean);
+
+      // Calculate statistics by entity
       const statistics: Record<string, any> = {};
       entities.forEach(entity => {
-        try {
-          const entityData = data.filter(d => d?.entity_id === entity);
-          const values = entityData
-            .map(d => d?.value)
-            .filter(v => v !== null && v !== undefined && !isNaN(Number(v)))
-            .map(v => Number(v));
-          
-          if (values.length > 0) {
-            statistics[entity] = {
-              count: values.length,
-              min: Math.min(...values),
-              max: Math.max(...values),
-              avg: (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2),
-              latest: entityData[entityData.length - 1]?.value
-            };
-          }
-        } catch (error) {
-          console.error(`Error processing entity ${entity}:`, error);
-          statistics[entity] = { error: 'Processing failed' };
+        const entityData = sortedData.filter(item => item.entity_id === entity);
+        const values = entityData.map(item => Number(item.value)).filter(v => !isNaN(v));
+        
+        if (values.length > 0) {
+          statistics[entity] = {
+            count: values.length,
+            min: Math.min(...values),
+            max: Math.max(...values),
+            avg: values.reduce((sum, val) => sum + val, 0) / values.length,
+            latest: values[values.length - 1]
+          };
         }
       });
-      
-      console.log('Calculated statistics:', statistics);
-      
-      // Get sample data with safety checks
-      const sampleData = [];
-      try {
-        if (data.length > 0) {
-          sampleData.push(...data.slice(0, Math.min(3, data.length)));
-          
-          if (data.length > 6) {
-            const midPoint = Math.floor(data.length / 2);
-            sampleData.push(...data.slice(midPoint, midPoint + 2));
-          }
-          
-          if (data.length > 3) {
-            sampleData.push(...data.slice(-Math.min(3, data.length)));
-          }
-        }
-      } catch (error) {
-        console.error('Error creating sample data:', error);
-      }
-      
-      console.log('Sample data created:', sampleData);
-      
-      const result = {
+
+      // Get sample data (first 5 and last 5 records)
+      const sampleData = [
+        ...sortedData.slice(0, Math.min(5, sortedData.length)),
+        ...(sortedData.length > 10 ? sortedData.slice(-5) : [])
+      ];
+
+      return {
         timeRange,
         entities,
         statistics,
         sampleData
       };
-      
-      console.log('Data summarization completed successfully:', result);
-      return result;
-      
     } catch (error) {
       console.error('Error in summarizeData:', error);
-      return {
-        timeRange: 'Error processing data',
-        entities: [],
-        statistics: { error: 'Data processing failed' },
-        sampleData: []
-      };
+      throw new Error(`Data summarization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }
