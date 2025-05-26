@@ -3,7 +3,7 @@ import type { InfluxConfig, QueryResult, FluxQuery, TimeRange } from '../types/i
 
 class InfluxDBService {
   private client: InfluxDB;
-  private config: InfluxConfig;
+  public config: InfluxConfig;
 
   constructor(config: InfluxConfig) {
     this.config = config;
@@ -14,6 +14,36 @@ class InfluxDBService {
   }
 
   async query(query: FluxQuery): Promise<QueryResult[]> {
+    // First check if this is InfluxDB 1.x by testing the health endpoint
+    try {
+      const healthResponse = await fetch(`${this.config.url}/health`);
+      const healthData = await healthResponse.json();
+      
+      if (healthData.version && healthData.version.startsWith('v1.')) {
+        console.log(`🔍 Detected InfluxDB ${healthData.version}, using InfluxQL instead of Flux`);
+        
+        // Convert Flux-like query to InfluxQL for HomeAssistant data
+        const database = this.config.bucket.split('/')[0] || 'homeassistant';
+        
+        // InfluxQL query for HomeAssistant sensor data
+        const influxQLQuery = `
+          SELECT time, entity_id, value, friendly_name, domain
+          FROM "%", "W", "Wh", "°C", "°F", "A", "V", "Hz"
+          WHERE time > now() - 7d 
+          AND domain = 'sensor'
+          AND entity_id =~ /sensor\..*/ 
+          ORDER BY time DESC 
+          LIMIT 1000
+        `;
+        
+        console.log('📊 Using InfluxQL query:', influxQLQuery);
+        return await this.queryInfluxQLForSensors(database, influxQLQuery);
+      }
+    } catch (healthError) {
+      console.log('⚠️ Could not determine InfluxDB version, trying Flux query');
+    }
+
+    // Original Flux query logic for InfluxDB 2.x
     const queryApi = this.client.getQueryApi(this.config.org);
     const results: QueryResult[] = [];
 
@@ -48,6 +78,62 @@ class InfluxDBService {
     }
 
     return results;
+  }
+
+  // Enhanced InfluxQL method for sensor data
+  private async queryInfluxQLForSensors(database: string, query: string): Promise<QueryResult[]> {
+    try {
+      const response = await fetch(`${this.config.url}/query?db=${database}&q=${encodeURIComponent(query)}`, {
+        method: 'GET',
+        headers: this.config.token ? {
+          'Authorization': `Token ${this.config.token}`,
+        } : {},
+      });
+
+      if (!response.ok) {
+        throw new Error(`InfluxQL query failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('📊 InfluxQL response:', data);
+
+      const results: QueryResult[] = [];
+
+      if (data.results && data.results[0] && data.results[0].series) {
+        for (const series of data.results[0].series) {
+          const columns = series.columns;
+          const timeIndex = columns.indexOf('time');
+          const entityIndex = columns.indexOf('entity_id');
+          const valueIndex = columns.indexOf('value');
+          const friendlyNameIndex = columns.indexOf('friendly_name');
+
+          // The measurement name (series.name) is the unit
+          const unit = series.name;
+
+          for (const values of series.values) {
+            const timestamp = values[timeIndex];
+            const entity_id = values[entityIndex];
+            const value = parseFloat(values[valueIndex]);
+            const friendly_name = friendlyNameIndex >= 0 ? values[friendlyNameIndex] : undefined;
+
+            if (!isNaN(value) && entity_id && entity_id.startsWith('sensor.')) {
+              results.push({
+                timestamp,
+                value,
+                entity_id,
+                unit,
+                friendly_name,
+              });
+            }
+          }
+        }
+      }
+
+      return results;
+    } catch (error) {
+      console.error('Error querying InfluxDB with InfluxQL:', error);
+      throw error;
+    }
   }
 
   // Alternative method using InfluxQL for InfluxDB 1.x
@@ -102,6 +188,81 @@ class InfluxDBService {
     } catch (error) {
       console.error('InfluxDB connection test failed:', error);
       return false;
+    }
+  }
+
+  // Method specifically for InfluxDB 1.x with InfluxQL
+  async queryInfluxDB1x(timeRange: string = '7d'): Promise<QueryResult[]> {
+    try {
+      const database = this.config.bucket.split('/')[0] || 'home_assistant';
+      
+      // Query multiple measurements that contain sensor data
+      const measurements = ['"%"', '"W"', '"Wh"', '"°C"', '"°F"', '"A"', '"V"', '"Hz"', '"Mbit/s"', '"KiB/s"'];
+      
+      const influxQLQuery = `
+        SELECT time, entity_id, value, friendly_name
+        FROM ${measurements.join(', ')}
+        WHERE time > now() - ${timeRange}
+        AND domain = 'sensor'
+        AND entity_id =~ /sensor\..*/
+        ORDER BY time DESC
+        LIMIT 1000
+      `;
+
+      console.log('📊 InfluxQL Query:', influxQLQuery);
+
+      const response = await fetch(`${this.config.url}/query?db=${database}&q=${encodeURIComponent(influxQLQuery)}`, {
+        method: 'GET',
+        headers: this.config.token ? {
+          'Authorization': `Token ${this.config.token}`,
+        } : {},
+      });
+
+      if (!response.ok) {
+        throw new Error(`InfluxQL query failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('📊 InfluxQL Response:', data);
+
+      const results: QueryResult[] = [];
+
+      if (data.results && data.results[0] && data.results[0].series) {
+        for (const series of data.results[0].series) {
+          const columns = series.columns;
+          const timeIndex = columns.indexOf('time');
+          const entityIndex = columns.indexOf('entity_id');
+          const valueIndex = columns.indexOf('value');
+          const friendlyNameIndex = columns.indexOf('friendly_name');
+
+          // The measurement name (series.name) is the unit
+          const unit = series.name;
+
+          for (const values of series.values) {
+            const timestamp = values[timeIndex];
+            const entity_id = values[entityIndex];
+            const value = parseFloat(values[valueIndex]);
+            const friendly_name = friendlyNameIndex >= 0 ? values[friendlyNameIndex] : undefined;
+
+            if (!isNaN(value) && entity_id && entity_id.startsWith('sensor.')) {
+              results.push({
+                timestamp,
+                value,
+                entity_id,
+                unit,
+                friendly_name,
+              });
+            }
+          }
+        }
+      }
+
+      console.log(`✅ Retrieved ${results.length} sensor data points from InfluxDB 1.x`);
+      return results;
+
+    } catch (error) {
+      console.error('❌ Error querying InfluxDB 1.x:', error);
+      throw error;
     }
   }
 }

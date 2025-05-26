@@ -7,6 +7,7 @@ import AnomalyDetectionCard from './AnomalyDetectionCard';
 import AutomationSuggestionsCard from './AutomationSuggestionsCard';
 import WeatherCorrelationCard from './WeatherCorrelationCard';
 import { validateEnvironmentVariables } from '../../utils/env-validation';
+import { influxService } from '../../services/influxdb';
 
 interface AnalyticsData {
   energyData: any[];
@@ -16,6 +17,18 @@ interface AnalyticsData {
   automationSuggestions: any[];
   weatherData: any[];
 }
+
+// Helper function to convert time range to InfluxDB format
+const getInfluxTimeRange = (timeRange: string) => {
+  switch (timeRange) {
+    case '1h': return '-1h';
+    case '24h': return '-24h';
+    case '7d': return '-7d';
+    case '30d': return '-30d';
+    case '90d': return '-90d';
+    default: return '-7d';
+  }
+};
 
 export function AnalyticsDashboard() {
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d');
@@ -32,20 +45,69 @@ export function AnalyticsDashboard() {
   const { data: analyticsData, isLoading, error, refetch } = useQuery({
     queryKey: ['analyticsData', selectedTimeRange],
     queryFn: async (): Promise<AnalyticsData> => {
-      // This would typically fetch from your analytics API
-      // For now, we'll return mock data structure
-      return {
-        energyData: [],
-        costData: [],
-        maintenanceData: [],
-        anomalies: [],
-        automationSuggestions: [],
-        weatherData: []
-      };
+      console.log('🔍 Fetching analytics data for time range:', selectedTimeRange);
+      console.log('🔗 InfluxDB Config:', {
+        url: influxService.config.url,
+        org: influxService.config.org,
+        bucket: influxService.config.bucket,
+        hasToken: !!influxService.config.token
+      });
+      
+      const influxTimeRange = getInfluxTimeRange(selectedTimeRange);
+      
+      // Test InfluxDB connection first
+      const isInfluxAvailable = await influxService.testConnection();
+      console.log('🔗 InfluxDB connection test:', isInfluxAvailable ? 'SUCCESS' : 'FAILED');
+      
+      if (!isInfluxAvailable) {
+        throw new Error(`InfluxDB connection failed. Please check:
+        1. InfluxDB is running at ${influxService.config.url}
+        2. InfluxDB token is configured
+        3. Network connectivity to InfluxDB server`);
+      }
+
+      try {
+        // Use InfluxDB 1.x method for HomeAssistant data
+        console.log('📊 Fetching sensor data from InfluxDB 1.x...');
+        const sensorData = await influxService.queryInfluxDB1x(selectedTimeRange);
+        console.log(`✅ Retrieved ${sensorData.length} sensor data points`);
+
+        return {
+          energyData: [], // TODO: Implement energy data fetching
+          costData: [], // TODO: Implement cost data fetching
+          maintenanceData: [], // TODO: Implement maintenance data fetching
+          anomalies: sensorData, // Real sensor data for anomaly detection
+          automationSuggestions: [], // TODO: Implement automation suggestions
+          weatherData: [] // TODO: Implement weather data fetching
+        };
+      } catch (error) {
+        console.error('❌ Error fetching analytics data:', error);
+        
+        // If the main query fails, try with a shorter time range
+        try {
+          console.log('🔄 Trying with shorter time range (24h)...');
+          const fallbackData = await influxService.queryInfluxDB1x('24h');
+          console.log(`✅ Retrieved ${fallbackData.length} data points with 24h range`);
+          
+          return {
+            energyData: [],
+            costData: [],
+            maintenanceData: [],
+            anomalies: fallbackData,
+            automationSuggestions: [],
+            weatherData: []
+          };
+        } catch (fallbackError) {
+          console.error('❌ Fallback query also failed:', fallbackError);
+          throw new Error(`Failed to query InfluxDB. Error: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`);
+        }
+      }
     },
     enabled: isConfigured,
     refetchInterval: refreshInterval,
     staleTime: 60000, // 1 minute
+    retry: 1, // Reduced retries since we want to see errors quickly
+    retryDelay: 1000,
   });
 
   // Auto-refresh toggle

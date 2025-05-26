@@ -4,6 +4,8 @@ import QueryInterface from './components/Dashboard/QueryInterface';
 import VisualizationWidget from './components/Dashboard/VisualizationWidget';
 import InsightsWidget from './components/Dashboard/InsightsWidget';
 import AnalyticsDashboard from './components/Analytics/AnalyticsDashboard';
+import PerformanceDashboard from './components/Performance/PerformanceDashboard';
+import PerformanceMonitor from './components/Performance/PerformanceMonitor';
 import { validateEnvironmentVariables, logEnvironmentStatus, getRequiredEnvHelp } from './utils/env-validation';
 
 const queryClient = new QueryClient();
@@ -12,7 +14,7 @@ function App() {
   const [queryResults, setQueryResults] = useState<any>(null);
   const [currentQuery, setCurrentQuery] = useState<string>('');
   const [envError, setEnvError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance'>('dashboard');
 
   // Validate environment variables on startup
   useEffect(() => {
@@ -105,6 +107,16 @@ function App() {
               >
                 🔬 Analytics Dashboard
               </button>
+              <button
+                onClick={() => setActiveTab('performance')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  activeTab === 'performance'
+                    ? 'bg-white/20 text-white shadow-lg'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                ⚡ Performance
+              </button>
             </div>
           </div>
         </header>
@@ -136,10 +148,18 @@ function App() {
                 />
               </div>
             </>
-          ) : (
+          ) : activeTab === 'analytics' ? (
             <AnalyticsDashboard />
+          ) : (
+            <PerformanceDashboard />
           )}
         </main>
+
+        {/* Performance Monitor - Always visible */}
+        <PerformanceMonitor 
+          enabled={true}
+          showDetails={activeTab === 'performance'}
+        />
       </div>
     </QueryClientProvider>
   );

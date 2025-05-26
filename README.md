@@ -32,6 +32,17 @@ A sophisticated web application that transforms your HomeAssistant sensor data i
 - **Chat Interface**: Interactive conversations to modify and enhance reports
 - **Data Summarization**: Intelligent processing of large datasets
 
+### 🤖 Intelligent HomeAssistant Automation Engine
+- **🧠 Smart Entity Analysis**: AI analyzes your actual HomeAssistant entities and relationships
+- **🏠 Area-Based Automation**: Automatically detects room/area patterns from entity names
+- **🔄 Duplicate Prevention**: Checks existing automations to avoid redundant suggestions
+- **⚡ Contextual Suggestions**: Only suggests automations that make sense for your specific devices
+- **🎯 Smart Device Pairing**: Matches related devices (e.g., motion sensors + lights in same room)
+- **One-Click Deployment**: Deploy automations directly to HomeAssistant with validation
+- **YAML Preview & Validation**: Review and customize before deployment
+- **Real-time Entity Detection**: Automatically discovers your HomeAssistant devices
+- **Connection Status Monitoring**: Live status with error handling and retry logic
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -67,6 +78,8 @@ A sophisticated web application that transforms your HomeAssistant sensor data i
    VITE_INFLUXDB_BUCKET=home_assistant/autogen
    VITE_HOMEASSISTANT_URL=http://your-homeassistant:8123
    VITE_HOMEASSISTANT_TOKEN=your_long_lived_access_token
+   
+   # Note: VITE_HOMEASSISTANT_* variables are used for both data visualization and automation creation
    ```
 
 3. **Deploy with Docker Compose**
@@ -148,6 +161,108 @@ docker run -d \
 
 5. **Open your browser**
    Navigate to `http://localhost:5173`
+
+## 🤖 HomeAssistant Automation Creation
+
+### Setup Instructions
+
+1. **Generate Long-Lived Access Token:**
+   - Go to HomeAssistant → Profile → Long-Lived Access Tokens
+   - Click "Create Token" and copy the generated token
+   - Add to `.env` as `REACT_APP_HOMEASSISTANT_TOKEN`
+
+2. **Configure HomeAssistant URL:**
+   - Set `REACT_APP_HOMEASSISTANT_URL` to your HomeAssistant instance
+   - Examples: `http://192.168.1.100:8123` or `https://your-domain.com`
+
+3. **Enable Configuration API:**
+   - Ensure your HomeAssistant user has admin privileges
+   - The automation creation requires config write access
+
+### Features
+
+- ✅ **Real-time entity detection** from your HomeAssistant
+- ✅ **Smart automation suggestions** based on available devices
+- ✅ **YAML preview and validation** before creation
+- ✅ **One-click automation deployment** to HomeAssistant
+- ✅ **Connection status monitoring** with error handling
+
+### Intelligent Automation Types
+
+The system analyzes your entities and suggests **10 different automation categories**:
+
+1. **🚶‍♂️💡 Motion-Activated Lighting**
+   - Detects motion sensors + lights in same area (e.g., `living_room_motion` + `living_room_lights`)
+   - Creates area-specific lighting automation with smart timing
+
+2. **🌡️🏠 Climate Presence Control**
+   - Matches climate devices with presence sensors
+   - Energy-saving temperature control when away/home
+
+3. **🚪🔒 Security Door/Window Alerts**
+   - Area-specific security monitoring for doors and windows
+   - Night-time and away-from-home notifications
+
+4. **🔐 Automatic Lock Control**
+   - Smart locks + presence sensors = auto-lock when leaving
+   - Area-specific lock automation
+
+5. **🌅🪟 Smart Blinds/Covers**
+   - Sun-based automation for covers and blinds
+   - Energy efficiency through automated shading
+
+6. **💧⚠️ Water Leak Detection**
+   - Emergency alerts for water/moisture sensors
+   - Area-specific leak monitoring
+
+7. **🔥🚨 Smoke Detection Alerts**
+   - Emergency fire safety automations
+   - Automatic lighting activation during emergencies
+
+8. **🌡️❄️ Temperature-Based Climate Control**
+   - Matches temperature sensors with climate devices in same area
+   - Precise room-by-room temperature control
+
+9. **💨💧 Humidity Control**
+   - Humidity sensors + exhaust fans = automatic ventilation
+   - Prevents mold and improves air quality
+
+10. **🌙✨ Goodnight Routine**
+    - Multi-device bedtime automation
+    - Lights off, doors locked, temperature adjusted
+
+> 📖 **Detailed Documentation**: See [INTELLIGENT_AUTOMATIONS.md](INTELLIGENT_AUTOMATIONS.md) for comprehensive information about the intelligent automation system.
+
+### How It Works
+
+1. **Navigate to Analytics Dashboard** → Automation Suggestions
+2. **Review AI-generated suggestions** based on your devices
+3. **Click "Create"** on any suggestion
+4. **Customize the automation** (name, description, mode)
+5. **Preview YAML configuration** before deployment
+6. **Validate and deploy** directly to HomeAssistant
+
+### Security Notes
+
+⚠️ **Important Security Considerations:**
+
+- Long-lived access tokens provide full HomeAssistant access
+- Store tokens securely and never commit them to version control
+- Consider using a dedicated HomeAssistant user for automation creation
+- Review all automations before deployment
+- The app validates configurations but cannot guarantee safety
+
+### Troubleshooting
+
+**Connection Issues:**
+- Verify HomeAssistant URL is accessible from the app
+- Check that the access token has admin privileges
+- Ensure HomeAssistant API is enabled (default: enabled)
+
+**Missing Entities:**
+- The app will warn about missing entities during validation
+- Update entity IDs in the customization step if needed
+- Some suggestions may not apply to your specific setup
 
 ## 🐳 Docker Configuration Details
 

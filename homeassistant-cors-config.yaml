@@ -1,0 +1,22 @@
+# HomeAssistant CORS Configuration
+# Add this to your HomeAssistant configuration.yaml file
+
+http:
+  cors_allowed_origins:
+    - "http://localhost:5173"           # Local development
+    - "http://127.0.0.1:5173"          # Local development (alternative)
+    - "http://192.168.50.141:5173"     # Your server IP (adjust as needed)
+    - "http://192.168.50.141:3000"     # Docker production port
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 192.168.50.0/24                  # Your local network
+
+# After adding this configuration:
+# 1. Save the configuration.yaml file
+# 2. Restart HomeAssistant
+# 3. Test the connection again
+
+# Alternative: If you don't want to modify HomeAssistant,
+# you can use the development server with --host flag:
+# npm run dev -- --host 0.0.0.0
+# Then access via: http://192.168.50.141:5173 

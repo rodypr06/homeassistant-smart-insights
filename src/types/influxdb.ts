@@ -10,6 +10,7 @@ export interface QueryResult {
   value: number;
   entity_id: string;
   unit?: string;
+  friendly_name?: string;
 }
 
 export interface FluxQuery {
